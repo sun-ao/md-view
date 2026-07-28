@@ -50,6 +50,11 @@ html, body {
   height: 100%;
 }
 
+/* Hide Vditor's built-in preview action toolbar (desktop/tablet/mobile buttons) */
+.vditor-preview__action {
+  display: none !important;
+}
+
 /* Preview mode: hide source area, show only rendered preview */
 .mode-preview .vditor-sv {
   display: none !important;
