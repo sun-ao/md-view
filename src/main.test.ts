@@ -58,3 +58,166 @@ describe('parseUrlParam', () => {
     expect(parseUrlParam('?url=https%3A%2F%2Fexample.com%2Fdoc.md')).toBe('https://example.com/doc.md')
   })
 })
+
+import { afterEach, beforeEach, vi } from 'vitest'
+import { main } from './main'
+
+// Mock load-md module
+vi.mock('./load-md', () => ({
+  loadMd: vi.fn(),
+}))
+
+// Mock vditor-instance module
+vi.mock('./vditor-instance', () => ({
+  createVditorInstance: vi.fn(),
+}))
+
+// Mock toolbar module
+vi.mock('./toolbar', () => ({
+  mountToolbar: vi.fn(),
+}))
+
+// Import after mock declarations
+import { loadMd } from './load-md'
+import { createVditorInstance } from './vditor-instance'
+import { mountToolbar } from './toolbar'
+
+const mockedLoadMd = vi.mocked(loadMd)
+const mockedCreateVditor = vi.mocked(createVditorInstance)
+const mockedMountToolbar = vi.mocked(mountToolbar)
+
+function createMockVditorInstance() {
+  return {
+    init: vi.fn().mockResolvedValue(undefined),
+    switchToPreview: vi.fn(),
+    switchToEdit: vi.fn(),
+    getContent: vi.fn().mockReturnValue(''),
+    setContent: vi.fn(),
+    destroy: vi.fn(),
+  }
+}
+
+function setupDOM() {
+  document.body.innerHTML = '<div id="toolbar"></div><div id="editor"></div>'
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  setupDOM()
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+describe('main orchestration', () => {
+  it('renders no_url error when ?url= param is missing', async () => {
+    // Simulate no url param
+    Object.defineProperty(window, 'location', {
+      value: { search: '' },
+      writable: true,
+    })
+
+    await main()
+
+    expect(mockedLoadMd).not.toHaveBeenCalled()
+    const editor = document.getElementById('editor')!
+    expect(editor.textContent).toContain('?url=')
+  })
+
+  it('renders no_url error when ?url= is empty', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=' },
+      writable: true,
+    })
+
+    await main()
+
+    expect(mockedLoadMd).not.toHaveBeenCalled()
+    const editor = document.getElementById('editor')!
+    expect(editor.textContent).toContain('?url=')
+  })
+
+  it('inits Vditor and mounts toolbar on successful load', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=https://example.com/doc.md' },
+      writable: true,
+    })
+
+    const mockVditor = createMockVditorInstance()
+    mockedCreateVditor.mockReturnValue(mockVditor)
+    mockedLoadMd.mockResolvedValue({
+      ok: true,
+      md: '# Hello',
+      url: 'https://example.com/doc.md',
+    })
+
+    await main()
+
+    expect(mockedLoadMd).toHaveBeenCalledWith('https://example.com/doc.md')
+    expect(mockedCreateVditor).toHaveBeenCalled()
+    expect(mockVditor.init).toHaveBeenCalledWith(
+      document.getElementById('editor'),
+      '# Hello',
+    )
+    expect(mockedMountToolbar).toHaveBeenCalledWith(
+      document.getElementById('toolbar'),
+      {
+        vditor: mockVditor,
+        sourceUrl: 'https://example.com/doc.md',
+      },
+    )
+  })
+
+  it('renders HTTP error on 404', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=https://example.com/missing.md' },
+      writable: true,
+    })
+
+    mockedLoadMd.mockResolvedValue({
+      ok: false,
+      error: { kind: 'http', status: 404 },
+    })
+
+    await main()
+
+    expect(mockedCreateVditor).not.toHaveBeenCalled()
+    const editor = document.getElementById('editor')!
+    expect(editor.textContent).toContain('404')
+  })
+
+  it('renders network/CORS error on network failure', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=https://example.com/doc.md' },
+      writable: true,
+    })
+
+    mockedLoadMd.mockResolvedValue({
+      ok: false,
+      error: { kind: 'network' },
+    })
+
+    await main()
+
+    const editor = document.getElementById('editor')!
+    expect(editor.textContent).toContain('CORS')
+  })
+
+  it('renders empty error on empty content', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=https://example.com/empty.md' },
+      writable: true,
+    })
+
+    mockedLoadMd.mockResolvedValue({
+      ok: false,
+      error: { kind: 'empty' },
+    })
+
+    await main()
+
+    const editor = document.getElementById('editor')!
+    expect(editor.textContent).toContain('空')
+  })
+})

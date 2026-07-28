@@ -24,7 +24,37 @@ export function parseUrlParam(search: string): string | null {
   return url
 }
 
-// Orchestrator - implemented in Part B below
-export async function main(): Promise<void> {
-  // placeholder
+function renderError(container: HTMLElement, error: FetchError): void {
+  const msg = getErrorMessage(error)
+  container.innerHTML = `<div class="error-state">${msg}</div>`
 }
+
+function renderLoading(container: HTMLElement): void {
+  container.innerHTML = '<div class="loading">加载中…</div>'
+}
+
+export async function main(): Promise<void> {
+  const toolbarEl = document.getElementById('toolbar')
+  const editorEl = document.getElementById('editor')
+  if (!toolbarEl || !editorEl) return
+
+  const url = parseUrlParam(window.location.search)
+  if (!url) {
+    renderError(editorEl, { kind: 'no_url' })
+    return
+  }
+
+  renderLoading(editorEl)
+
+  const result = await loadMd(url)
+  if (!result.ok) {
+    renderError(editorEl, result.error)
+    return
+  }
+
+  const vditor = createVditorInstance()
+  await vditor.init(editorEl, result.md)
+  mountToolbar(toolbarEl, { vditor, sourceUrl: url })
+}
+
+main()
