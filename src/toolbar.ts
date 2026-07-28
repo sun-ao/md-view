@@ -16,6 +16,94 @@ export function extractFilename(url: string): string {
   }
 }
 
+function exportMd(md: string, filename: string): void {
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    try {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
 export function mountToolbar(container: HTMLElement, config: ToolbarConfig): void {
-  // Implemented in Part B below
+  const { vditor, sourceUrl } = config
+  let isPreviewMode = true
+
+  container.innerHTML = ''
+
+  // Mode toggle button
+  const modeBtn = document.createElement('button')
+  modeBtn.dataset.action = 'mode'
+  modeBtn.textContent = '编辑'
+  modeBtn.addEventListener('click', () => {
+    if (isPreviewMode) {
+      vditor.switchToEdit()
+      isPreviewMode = false
+      modeBtn.textContent = '预览'
+    } else {
+      vditor.switchToPreview()
+      isPreviewMode = true
+      modeBtn.textContent = '编辑'
+    }
+  })
+  container.appendChild(modeBtn)
+
+  // Export button
+  const exportBtn = document.createElement('button')
+  exportBtn.dataset.action = 'export'
+  exportBtn.textContent = '导出'
+  exportBtn.addEventListener('click', () => {
+    const md = vditor.getContent()
+    const filename = sourceUrl ? extractFilename(sourceUrl) : 'document.md'
+    exportMd(md, filename)
+  })
+  container.appendChild(exportBtn)
+
+  // Copy button
+  const copyBtn = document.createElement('button')
+  copyBtn.dataset.action = 'copy'
+  copyBtn.textContent = '复制'
+  copyBtn.addEventListener('click', async () => {
+    const md = vditor.getContent()
+    const ok = await copyToClipboard(md)
+    if (ok) {
+      const original = copyBtn.textContent
+      copyBtn.textContent = '已复制'
+      setTimeout(() => { copyBtn.textContent = original }, 2000)
+    }
+  })
+  container.appendChild(copyBtn)
+
+  // Source link (only if sourceUrl provided)
+  if (sourceUrl) {
+    const sourceLink = document.createElement('a')
+    sourceLink.dataset.action = 'source'
+    sourceLink.textContent = '原文链接'
+    sourceLink.href = sourceUrl
+    sourceLink.target = '_blank'
+    sourceLink.rel = 'noopener noreferrer'
+    container.appendChild(sourceLink)
+  }
 }
