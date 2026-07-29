@@ -80,6 +80,28 @@ describe('mountResizer', () => {
     expect(resizer.classList.contains('dragging')).toBe(false)
   })
 
+  it('clamps to MAX_WIDTH when dragging far right', () => {
+    const { resizer, outline } = setupResizerFixture()
+    mountResizer(resizer, outline)
+
+    resizer.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, pointerId: 1 }))
+    // 起始 260 + delta 500 = 760 -> clamp 到 480
+    resizer.dispatchEvent(new PointerEvent('pointermove', { clientX: 700, pointerId: 1 }))
+
+    expect(outline.style.width).toBe('480px')
+  })
+
+  it('clamps to MIN_WIDTH when dragging far left', () => {
+    const { resizer, outline } = setupResizerFixture()
+    mountResizer(resizer, outline)
+
+    resizer.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, pointerId: 1 }))
+    // 起始 260 + delta(-200) = 60 -> clamp 到 160
+    resizer.dispatchEvent(new PointerEvent('pointermove', { clientX: 0, pointerId: 1 }))
+
+    expect(outline.style.width).toBe('160px')
+  })
+
   it('adds the mounted class on mount so CSS makes it visible', () => {
     const resizer = document.getElementById('resizer')!
     const outline = document.getElementById('outline')!
