@@ -131,4 +131,28 @@ describe('mountResizer', () => {
     handle.destroy()
     expect(resizer.classList.contains('mounted')).toBe(false)
   })
+
+  it('destroy stops drag from updating width', () => {
+    const { resizer, outline } = setupResizerFixture()
+    const handle = mountResizer(resizer, outline)
+    handle.destroy()
+
+    resizer.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, pointerId: 1 }))
+    resizer.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, pointerId: 1 }))
+
+    // destroy 后拖拽不应改变宽度
+    expect(outline.style.width).toBe('260px')
+  })
+
+  it('destroy stops dblclick from resetting width', () => {
+    const { resizer, outline } = setupResizerFixture()
+    const handle = mountResizer(resizer, outline)
+    // 先手动改宽度
+    outline.style.width = '400px'
+    handle.destroy()
+
+    resizer.dispatchEvent(new MouseEvent('dblclick'))
+
+    expect(outline.style.width).toBe('400px')
+  })
 })
