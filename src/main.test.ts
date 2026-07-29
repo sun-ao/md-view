@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getErrorMessage, parseUrlParam } from './main'
+import { getErrorMessage, parseUrlParam, parseToolbarParam } from './main'
 import type { FetchError } from './load-md'
 
 describe('getErrorMessage', () => {
@@ -56,6 +56,38 @@ describe('parseUrlParam', () => {
 
   it('decodes URL-encoded values', () => {
     expect(parseUrlParam('?url=https%3A%2F%2Fexample.com%2Fdoc.md')).toBe('https://example.com/doc.md')
+  })
+})
+
+describe('parseToolbarParam', () => {
+  it('returns true for toolbar=1', () => {
+    expect(parseToolbarParam('?url=xxx&toolbar=1')).toBe(true)
+  })
+
+  it('returns true for toolbar=true (case-insensitive)', () => {
+    expect(parseToolbarParam('?url=xxx&toolbar=true')).toBe(true)
+    expect(parseToolbarParam('?url=xxx&toolbar=TRUE')).toBe(true)
+  })
+
+  it('returns false for toolbar=0', () => {
+    expect(parseToolbarParam('?url=xxx&toolbar=0')).toBe(false)
+  })
+
+  it('returns false for empty toolbar value', () => {
+    expect(parseToolbarParam('?url=xxx&toolbar=')).toBe(false)
+  })
+
+  it('returns false for other values', () => {
+    expect(parseToolbarParam('?url=xxx&toolbar=yes')).toBe(false)
+    expect(parseToolbarParam('?url=xxx&toolbar=false')).toBe(false)
+  })
+
+  it('returns false when toolbar param is absent', () => {
+    expect(parseToolbarParam('?url=xxx')).toBe(false)
+  })
+
+  it('returns false for empty search', () => {
+    expect(parseToolbarParam('')).toBe(false)
   })
 })
 

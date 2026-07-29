@@ -26,6 +26,14 @@ export function parseUrlParam(search: string): string | null {
   return url
 }
 
+export function parseToolbarParam(search: string): boolean {
+  const params = new URLSearchParams(search)
+  const value = params.get('toolbar')
+  if (!value) return false
+  const lower = value.toLowerCase()
+  return lower === '1' || lower === 'true'
+}
+
 function renderError(container: HTMLElement, error: FetchError): void {
   const msg = getErrorMessage(error)
   container.innerHTML = `<div class="error-state">${msg}</div>`
