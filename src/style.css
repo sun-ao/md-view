@@ -10,7 +10,7 @@ html, body {
 }
 
 #toolbar {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 8px;
   height: 48px;
@@ -42,8 +42,16 @@ html, body {
 
 #app {
   display: flex;
-  height: calc(100vh - 48px);
+  height: 100vh;
   overflow: hidden;
+}
+
+body.show-toolbar #toolbar {
+  display: flex;
+}
+
+body.show-toolbar #app {
+  height: calc(100vh - 48px);
 }
 
 #outline {
