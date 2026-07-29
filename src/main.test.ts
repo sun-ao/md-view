@@ -77,14 +77,32 @@ vi.mock('./toolbar', () => ({
   mountToolbar: vi.fn(),
 }))
 
+// Mock outline module
+vi.mock('./outline', () => ({
+  mountOutline: vi.fn(),
+}))
+
+// Mock divider module
+vi.mock('./divider', () => ({
+  mountResizer: vi.fn(),
+}))
+
 // Import after mock declarations
 import { loadMd } from './load-md'
 import { createVditorInstance } from './vditor-instance'
 import { mountToolbar } from './toolbar'
+import { mountOutline } from './outline'
+import { mountResizer } from './divider'
 
 const mockedLoadMd = vi.mocked(loadMd)
 const mockedCreateVditor = vi.mocked(createVditorInstance)
 const mockedMountToolbar = vi.mocked(mountToolbar)
+const mockedMountOutline = vi.mocked(mountOutline)
+const mockedMountResizer = vi.mocked(mountResizer)
+
+function createMockToolbarHandle() {
+  return { setOutlineToggleAvailable: vi.fn() }
+}
 
 function createMockVditorInstance() {
   return {
@@ -98,7 +116,8 @@ function createMockVditorInstance() {
 }
 
 function setupDOM() {
-  document.body.innerHTML = '<div id="toolbar"></div><div id="editor"></div>'
+  document.body.innerHTML =
+    '<div id="toolbar"></div><div id="app"><aside id="outline"></aside><div class="resizer" id="resizer"></div><div id="editor"></div></div>'
 }
 
 beforeEach(() => {
@@ -138,7 +157,7 @@ describe('main orchestration', () => {
     expect(editor.textContent).toContain('?url=')
   })
 
-  it('inits Vditor and mounts toolbar on successful load', async () => {
+  it('inits Vditor and mounts toolbar on successful load, enables outline toggle when headings exist', async () => {
     Object.defineProperty(window, 'location', {
       value: { search: '?url=https://example.com/doc.md' },
       writable: true,
@@ -151,6 +170,10 @@ describe('main orchestration', () => {
       md: '# Hello',
       url: 'https://example.com/doc.md',
     })
+    const toolbarHandle = createMockToolbarHandle()
+    mockedMountToolbar.mockReturnValue(toolbarHandle)
+    const outlineHandle = { destroy: vi.fn() }
+    mockedMountOutline.mockResolvedValue(outlineHandle)
 
     await main()
 
@@ -165,8 +188,43 @@ describe('main orchestration', () => {
       {
         vditor: mockVditor,
         sourceUrl: 'https://example.com/doc.md',
+        outlineEl: document.getElementById('outline'),
       },
     )
+    expect(mockedMountOutline).toHaveBeenCalledWith(
+      document.getElementById('outline'),
+      document.getElementById('editor'),
+    )
+    expect(toolbarHandle.setOutlineToggleAvailable).toHaveBeenCalled()
+    expect(mockedMountResizer).toHaveBeenCalledWith(
+      document.getElementById('resizer'),
+      document.getElementById('outline'),
+    )
+  })
+
+  it('does not enable outline toggle when document has no headings', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=https://example.com/doc.md' },
+      writable: true,
+    })
+
+    const mockVditor = createMockVditorInstance()
+    mockedCreateVditor.mockReturnValue(mockVditor)
+    mockedLoadMd.mockResolvedValue({
+      ok: true,
+      md: 'plain text without headings',
+      url: 'https://example.com/doc.md',
+    })
+    const toolbarHandle = createMockToolbarHandle()
+    mockedMountToolbar.mockReturnValue(toolbarHandle)
+    // mountOutline returns null when no headings found
+    mockedMountOutline.mockResolvedValue(null)
+
+    await main()
+
+    expect(toolbarHandle.setOutlineToggleAvailable).not.toHaveBeenCalled()
+    // 无标题 -> mountOutline 返回 null -> 不挂载 resizer
+    expect(mockedMountResizer).not.toHaveBeenCalled()
   })
 
   it('renders HTTP error on 404', async () => {

@@ -1,5 +1,7 @@
 import './style.css'
 import { loadMd, type FetchError } from './load-md'
+import { mountOutline } from './outline'
+import { mountResizer } from './divider'
 import { mountToolbar } from './toolbar'
 import { createVditorInstance, type IVditorInstance } from './vditor-instance'
 
@@ -54,7 +56,17 @@ export async function main(): Promise<void> {
 
   const vditor = createVditorInstance()
   await vditor.init(editorEl, result.md)
-  mountToolbar(toolbarEl, { vditor, sourceUrl: url })
+  const outlineEl = document.getElementById('outline')
+  const toolbarHandle = mountToolbar(toolbarEl, { vditor, sourceUrl: url, outlineEl })
+
+  if (outlineEl) {
+    const outlineHandle = await mountOutline(outlineEl, editorEl)
+    if (outlineHandle) {
+      toolbarHandle.setOutlineToggleAvailable()
+      const resizerEl = document.getElementById('resizer')
+      if (resizerEl) mountResizer(resizerEl, outlineEl)
+    }
+  }
 }
 
 main()
