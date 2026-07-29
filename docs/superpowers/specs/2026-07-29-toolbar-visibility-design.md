@@ -50,7 +50,7 @@ parseToolbarParam('')                     -> false
 
 ### main.ts 流程
 
-`main()` 在拿到 `toolbarEl` 后、调用 `mountToolbar` 前判断：
+`main()` 在成功加载 md、拿到 `toolbarEl` 后、调用 `mountToolbar` 前判断（错误/加载态不需要 toolbar）：
 
 1. `const showToolbar = parseToolbarParam(window.location.search)`
 2. 若 `showToolbar`：`document.body.classList.add('show-toolbar')`，再调用 `mountToolbar` 拿 `toolbarHandle`。
@@ -66,7 +66,7 @@ toolbar 不显示时，大纲仍正常挂载和自动显示（用户已确认可
 
 ## 连带影响
 
-- toolbar 隐藏时，其中的"隐藏/显示大纲"按钮不可用；大纲侧栏仍按现有逻辑自动显示。
+- toolbar 隐藏时，其中的所有按钮均不可用：编辑/预览切换、导出、复制、原文链接、隐藏/显示大纲。大纲侧栏仍按现有逻辑自动显示（用户已确认可接受，只是无法用按钮收起）。
 - 其它模块（`load-md`、`vditor-instance`、`toolbar`、`outline`、`divider`）行为不变。
 
 ## 测试
