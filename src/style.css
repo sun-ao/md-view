@@ -40,19 +40,122 @@ html, body {
   background: #f0f0f0;
 }
 
-#editor {
+#app {
+  display: flex;
   height: calc(100vh - 48px);
   overflow: hidden;
 }
 
-/* Vditor fills its container */
-#editor .vditor {
+#outline {
+  width: 260px;
+  flex-shrink: 0;
   height: 100%;
+  overflow-y: auto;
+  background: #fafafa;
+  padding: 12px 0;
+}
+
+/* User-toggled hidden state (independent of edit-mode auto-hide) */
+#outline.outline-hidden {
+  display: none;
+}
+
+.resizer {
+  width: 6px;
+  flex-shrink: 0;
+  height: 100%;
+  cursor: col-resize;
+  background: #e0e0e0;
+  position: relative;
+  z-index: 1;
+  display: none;
+  user-select: none;
+}
+.resizer.mounted { display: block; }
+.resizer.dragging { background: #bdbdbd; }
+.resizer:hover { background: #bdbdbd; }
+
+#app:has(#editor.mode-edit) .resizer.mounted { display: none; }
+#outline.outline-hidden ~ .resizer.mounted { display: none; }
+@media (max-width: 768px) {
+  .resizer.mounted { display: none; }
+}
+
+#editor {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Vditor is instantiated directly on #editor, which adds the .vditor class
+   to it. Vditor's built-in border (1px solid var(--border-color)) would stack
+   with #toolbar's border-bottom and #outline's border-right, creating
+   visually thick dividers. Neutralize it. */
+#editor.vditor {
+  height: 100%;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+/* In preview mode the source pane (.vditor-sv) is hidden, so .vditor-preview's
+   border-left + margin-left:-1px (normally shared with the source pane in sv
+   mode) would stick out of the editor and overlap #outline's right border. */
+.mode-preview .vditor-preview {
+  border-left: none !important;
+  margin-left: 0 !important;
 }
 
 /* Hide Vditor's built-in preview action toolbar (desktop/tablet/mobile buttons) */
 .vditor-preview__action {
   display: none !important;
+}
+
+/* Hide Vditor's built-in top toolbar: toolbar:[] + hide:true still leaves a 5px hover strip; we use our own #toolbar */
+.vditor-toolbar {
+  display: none !important;
+}
+
+/* Outline sidebar items */
+.outline-item {
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #555;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 3px solid transparent;
+}
+
+.outline-item:hover {
+  background: #ececec;
+}
+
+.outline-level-1 { padding-left: 12px; }
+.outline-level-2 { padding-left: 24px; }
+.outline-level-3 { padding-left: 36px; }
+.outline-level-4 { padding-left: 48px; }
+.outline-level-5 { padding-left: 60px; }
+.outline-level-6 { padding-left: 72px; }
+
+.outline-active {
+  background: #e0e0e0;
+  color: #000;
+  border-left-color: #999;
+  font-weight: 600;
+}
+
+/* Edit mode: hide the outline so the editor fills the viewport */
+#app:has(#editor.mode-edit) #outline {
+  display: none;
+}
+
+/* Narrow screens: hide the outline */
+@media (max-width: 768px) {
+  #outline {
+    display: none;
+  }
 }
 
 /* Preview mode: hide source area, show only rendered preview */
@@ -86,4 +189,32 @@ html, body {
   height: 100%;
   color: #999;
   font-size: 14px;
+}
+
+/* Preview mode: stepped max-width, mirroring Typora github theme */
+.mode-preview .vditor-reset {
+  max-width: 860px !important;
+  margin: 0 auto !important;
+}
+@media (min-width: 1400px) {
+  .mode-preview .vditor-reset {
+    max-width: 1024px !important;
+  }
+}
+@media (min-width: 1800px) {
+  .mode-preview .vditor-reset {
+    max-width: 1200px !important;
+  }
+}
+
+/* Tables: fill width and wrap cell content, mirroring Typora (no horizontal scroll) */
+.vditor-reset table {
+  display: table !important;
+  width: 100% !important;
+  overflow: visible !important;
+  word-break: normal !important;
+}
+.vditor-reset table td,
+.vditor-reset table th {
+  white-space: normal !important;
 }
