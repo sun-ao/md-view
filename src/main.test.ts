@@ -148,6 +148,7 @@ function createMockVditorInstance() {
 }
 
 function setupDOM() {
+  document.body.className = ''
   document.body.innerHTML =
     '<div id="toolbar"></div><div id="app"><aside id="outline"></aside><div class="resizer" id="resizer"></div><div id="editor"></div></div>'
 }
@@ -191,7 +192,7 @@ describe('main orchestration', () => {
 
   it('inits Vditor and mounts toolbar on successful load, enables outline toggle when headings exist', async () => {
     Object.defineProperty(window, 'location', {
-      value: { search: '?url=https://example.com/doc.md' },
+      value: { search: '?url=https://example.com/doc.md&toolbar=1' },
       writable: true,
     })
 
@@ -236,7 +237,7 @@ describe('main orchestration', () => {
 
   it('does not enable outline toggle when document has no headings', async () => {
     Object.defineProperty(window, 'location', {
-      value: { search: '?url=https://example.com/doc.md' },
+      value: { search: '?url=https://example.com/doc.md&toolbar=1' },
       writable: true,
     })
 
@@ -257,6 +258,54 @@ describe('main orchestration', () => {
     expect(toolbarHandle.setOutlineToggleAvailable).not.toHaveBeenCalled()
     // 无标题 -> mountOutline 返回 null -> 不挂载 resizer
     expect(mockedMountResizer).not.toHaveBeenCalled()
+  })
+
+  it('does not mount toolbar and skips show-toolbar class when toolbar param is absent', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=https://example.com/doc.md' },
+      writable: true,
+    })
+
+    const mockVditor = createMockVditorInstance()
+    mockedCreateVditor.mockReturnValue(mockVditor)
+    mockedLoadMd.mockResolvedValue({
+      ok: true,
+      md: '# Hello',
+      url: 'https://example.com/doc.md',
+    })
+    const outlineHandle = { destroy: vi.fn() }
+    mockedMountOutline.mockResolvedValue(outlineHandle)
+
+    await main()
+
+    expect(mockedMountToolbar).not.toHaveBeenCalled()
+    expect(document.body.classList.contains('show-toolbar')).toBe(false)
+    // outline still mounts even without toolbar
+    expect(mockedMountOutline).toHaveBeenCalled()
+  })
+
+  it('adds show-toolbar class and mounts toolbar when toolbar=1', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=https://example.com/doc.md&toolbar=1' },
+      writable: true,
+    })
+
+    const mockVditor = createMockVditorInstance()
+    mockedCreateVditor.mockReturnValue(mockVditor)
+    mockedLoadMd.mockResolvedValue({
+      ok: true,
+      md: '# Hello',
+      url: 'https://example.com/doc.md',
+    })
+    const toolbarHandle = createMockToolbarHandle()
+    mockedMountToolbar.mockReturnValue(toolbarHandle)
+    const outlineHandle = { destroy: vi.fn() }
+    mockedMountOutline.mockResolvedValue(outlineHandle)
+
+    await main()
+
+    expect(document.body.classList.contains('show-toolbar')).toBe(true)
+    expect(mockedMountToolbar).toHaveBeenCalled()
   })
 
   it('renders HTTP error on 404', async () => {

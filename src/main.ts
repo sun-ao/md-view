@@ -65,12 +65,20 @@ export async function main(): Promise<void> {
   const vditor = createVditorInstance()
   await vditor.init(editorEl, result.md)
   const outlineEl = document.getElementById('outline')
-  const toolbarHandle = mountToolbar(toolbarEl, { vditor, sourceUrl: url, outlineEl })
+
+  const showToolbar = parseToolbarParam(window.location.search)
+  const toolbarHandle = showToolbar
+    ? mountToolbar(toolbarEl, { vditor, sourceUrl: url, outlineEl })
+    : undefined
+
+  if (showToolbar) {
+    document.body.classList.add('show-toolbar')
+  }
 
   if (outlineEl) {
     const outlineHandle = await mountOutline(outlineEl, editorEl)
     if (outlineHandle) {
-      toolbarHandle.setOutlineToggleAvailable()
+      toolbarHandle?.setOutlineToggleAvailable()
       const resizerEl = document.getElementById('resizer')
       if (resizerEl) mountResizer(resizerEl, outlineEl)
     }
