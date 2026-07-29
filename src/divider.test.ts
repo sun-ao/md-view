@@ -109,6 +109,21 @@ describe('mountResizer', () => {
     expect(resizer.classList.contains('mounted')).toBe(true)
   })
 
+  it('resets outline width to default on dblclick', () => {
+    const { resizer, outline } = setupResizerFixture()
+    mountResizer(resizer, outline)
+
+    // 先拖拽改宽度
+    resizer.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, pointerId: 1 }))
+    resizer.dispatchEvent(new PointerEvent('pointermove', { clientX: 300, pointerId: 1 }))
+    expect(outline.style.width).toBe('360px')
+
+    // 双击重置
+    resizer.dispatchEvent(new MouseEvent('dblclick'))
+
+    expect(outline.style.width).toBe('260px')
+  })
+
   it('destroy removes the mounted class', () => {
     const resizer = document.getElementById('resizer')!
     const outline = document.getElementById('outline')!

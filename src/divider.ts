@@ -45,11 +45,16 @@ export function mountResizer(resizerEl: HTMLElement, outlineEl: HTMLElement): Re
     resizerEl.classList.remove('dragging')
   }
 
+  const onDblClick = (): void => {
+    outlineEl.style.width = `${DEFAULT_WIDTH}px`
+  }
+
   resizerEl.addEventListener('pointerdown', onPointerDown)
   resizerEl.addEventListener('pointermove', onPointerMove)
   resizerEl.addEventListener('pointerup', onPointerUp)
   // pointercancel 与 pointerup 共用处理:系统取消指针(如触摸中断)时也要释放 capture + 移除 dragging
   resizerEl.addEventListener('pointercancel', onPointerUp)
+  resizerEl.addEventListener('dblclick', onDblClick)
 
   return {
     destroy(): void {
@@ -57,6 +62,7 @@ export function mountResizer(resizerEl: HTMLElement, outlineEl: HTMLElement): Re
       resizerEl.removeEventListener('pointermove', onPointerMove)
       resizerEl.removeEventListener('pointerup', onPointerUp)
       resizerEl.removeEventListener('pointercancel', onPointerUp)
+      resizerEl.removeEventListener('dblclick', onDblClick)
       resizerEl.classList.remove('mounted')
     },
   }
