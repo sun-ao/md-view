@@ -1,6 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clampWidth, mountResizer } from './divider'
 
+// jsdom 不提供 PointerEvent 构造器,需 polyfill 才能用 new PointerEvent(...)。
+if (typeof PointerEvent === 'undefined') {
+  class PointerEventPolyfill extends MouseEvent {
+    pointerId: number
+    pointerType: string
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init)
+      this.pointerId = init.pointerId ?? 0
+      this.pointerType = init.pointerType ?? ''
+    }
+  }
+  globalThis.PointerEvent = PointerEventPolyfill as unknown as typeof PointerEvent
+}
+
 describe('clampWidth', () => {
   it('returns the value unchanged when within range', () => {
     expect(clampWidth(300, 160, 480)).toBe(300)
@@ -30,6 +44,40 @@ describe('mountResizer', () => {
 
   afterEach(() => {
     document.body.innerHTML = ''
+  })
+
+  // jsdom 不实现 setPointerCapture / releasePointerCapture,需 stub。
+  function setupResizerFixture(): { resizer: HTMLElement; outline: HTMLElement } {
+    const resizer = document.getElementById('resizer')!
+    const outline = document.getElementById('outline')!
+    resizer.setPointerCapture = vi.fn()
+    resizer.releasePointerCapture = vi.fn()
+    // 给 outline 一个起始宽度,模拟默认 260px
+    outline.style.width = '260px'
+    return { resizer, outline }
+  }
+
+  it('updates outline width by the pointer delta during drag', () => {
+    const { resizer, outline } = setupResizerFixture()
+    mountResizer(resizer, outline)
+
+    // pointerdown 记录起点 clientX=200,起始宽度 260
+    resizer.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, pointerId: 1 }))
+    // pointermove 到 clientX=250 -> delta=50 -> 新宽度 310
+    resizer.dispatchEvent(new PointerEvent('pointermove', { clientX: 250, pointerId: 1 }))
+
+    expect(outline.style.width).toBe('310px')
+  })
+
+  it('adds dragging class on pointerdown and removes on pointerup', () => {
+    const { resizer, outline } = setupResizerFixture()
+    mountResizer(resizer, outline)
+
+    resizer.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, pointerId: 1 }))
+    expect(resizer.classList.contains('dragging')).toBe(true)
+
+    resizer.dispatchEvent(new PointerEvent('pointerup', { clientX: 210, pointerId: 1 }))
+    expect(resizer.classList.contains('dragging')).toBe(false)
   })
 
   it('adds the mounted class on mount so CSS makes it visible', () => {
