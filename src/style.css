@@ -60,7 +60,6 @@ body.show-toolbar #app {
   height: 100%;
   overflow-y: auto;
   background: #fafafa;
-  padding: 12px 0;
 }
 
 /* User-toggled hidden state (independent of edit-mode auto-hide) */
@@ -69,7 +68,7 @@ body.show-toolbar #app {
 }
 
 .resizer {
-  width: 6px;
+  width: 3px;
   flex-shrink: 0;
   height: 100%;
   cursor: col-resize;
@@ -126,9 +125,9 @@ body.show-toolbar #app {
 
 /* Outline sidebar items */
 .outline-item {
-  padding: 6px 12px;
-  font-size: 13px;
-  line-height: 1.4;
+  padding: 5px 12px;
+  font-size: 14px;
+  line-height: 1.35;
   color: #555;
   cursor: pointer;
   white-space: nowrap;
@@ -141,7 +140,7 @@ body.show-toolbar #app {
   background: #ececec;
 }
 
-.outline-level-1 { padding-left: 12px; }
+.outline-level-1 { padding-left: 12px; font-weight: 600; }
 .outline-level-2 { padding-left: 24px; }
 .outline-level-3 { padding-left: 36px; }
 .outline-level-4 { padding-left: 48px; }

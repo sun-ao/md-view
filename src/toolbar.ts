@@ -3,6 +3,12 @@ import type { IVditorInstance } from './vditor-instance'
 export interface ToolbarConfig {
   vditor: IVditorInstance
   sourceUrl: string | null
+  outlineEl?: HTMLElement | null
+}
+
+export interface ToolbarHandle {
+  /** Unhide the outline toggle button. Called after headings are confirmed. */
+  setOutlineToggleAvailable(): void
 }
 
 export function extractFilename(url: string): string {
@@ -47,9 +53,10 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function mountToolbar(container: HTMLElement, config: ToolbarConfig): void {
-  const { vditor, sourceUrl } = config
+export function mountToolbar(container: HTMLElement, config: ToolbarConfig): ToolbarHandle {
+  const { vditor, sourceUrl, outlineEl } = config
   let isPreviewMode = true
+  let outlineVisible = true
 
   container.innerHTML = ''
 
@@ -105,5 +112,27 @@ export function mountToolbar(container: HTMLElement, config: ToolbarConfig): voi
     sourceLink.target = '_blank'
     sourceLink.rel = 'noopener noreferrer'
     container.appendChild(sourceLink)
+  }
+
+  // Outline toggle button (hidden until setOutlineToggleAvailable is called,
+  // which happens after mountOutline confirms headings exist)
+  let outlineBtn: HTMLButtonElement | null = null
+  if (outlineEl) {
+    outlineBtn = document.createElement('button')
+    outlineBtn.dataset.action = 'outline'
+    outlineBtn.textContent = '隐藏大纲'
+    outlineBtn.style.display = 'none'
+    outlineBtn.addEventListener('click', () => {
+      outlineVisible = !outlineVisible
+      outlineEl.classList.toggle('outline-hidden', !outlineVisible)
+      outlineBtn!.textContent = outlineVisible ? '隐藏大纲' : '显示大纲'
+    })
+    container.appendChild(outlineBtn)
+  }
+
+  return {
+    setOutlineToggleAvailable(): void {
+      if (outlineBtn) outlineBtn.style.display = ''
+    },
   }
 }

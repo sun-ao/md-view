@@ -12,6 +12,14 @@
 https://your-host.com/?url=https://raw.githubusercontent.com/microsoft/vscode/main/README.md
 ```
 
+支持的 URL 参数：
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `url` | 是 | Markdown 文件地址 |
+| `toolbar` | 否 | `1` 显示顶部工具栏（编辑 / 导出 / 复制 / 原文 / 大纲切换），默认隐藏 |
+| `outline` | 否 | `0` 或 `false` 关闭右侧大纲，默认显示 |
+
 > **注意**：由于浏览器安全限制（CORS），只能加载**允许跨域**的在线地址。推荐的 CORS 友好源包括：
 > - `https://raw.githubusercontent.com/...`
 > - `https://cdn.jsdelivr.net/...`
@@ -26,6 +34,7 @@ https://your-host.com/?url=https://raw.githubusercontent.com/microsoft/vscode/ma
 - 编辑内容不持久化，可导出 `.md` 文件到本地
 - 一键复制 Markdown 内容到剪贴板
 - 原文链接跳转
+- 自动生成文章大纲，点击跳转、滚动高亮，可拖拽调整宽度
 - 加载态 / 错误态提示（CORS、HTTP 404、空文件等）
 
 ## 本地开发
@@ -66,7 +75,9 @@ http://localhost:5173/?url=https://raw.githubusercontent.com/microsoft/vscode/ma
 src/
 ├── load-md.ts          # 远程 Markdown 拉取与错误分类
 ├── vditor-instance.ts  # Vditor 实例封装（预览/编辑模式切换）
-├── toolbar.ts          # 顶部工具栏（编辑/导出/复制/原文链接）
+├── toolbar.ts          # 顶部工具栏（编辑 / 导出 / 复制 / 原文 / 大纲切换）
+├── outline.ts          # 文章大纲（scroll-spy + 点击跳转）
+├── divider.ts          # 大纲宽度拖拽分隔条
 ├── main.ts             # 应用入口编排
 └── style.css           # 布局与 Vditor 模式样式
 ```

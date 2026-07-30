@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getErrorMessage, parseUrlParam, parseToolbarParam } from './main'
+import { getErrorMessage, parseUrlParam, parseToolbarParam, parseOutlineParam } from './main'
 import type { FetchError } from './load-md'
 
 describe('getErrorMessage', () => {
@@ -88,6 +88,34 @@ describe('parseToolbarParam', () => {
 
   it('returns false for empty search', () => {
     expect(parseToolbarParam('')).toBe(false)
+  })
+})
+
+describe('parseOutlineParam', () => {
+  it('returns true when outline param is absent (default show)', () => {
+    expect(parseOutlineParam('?url=xxx')).toBe(true)
+  })
+
+  it('returns true for empty search', () => {
+    expect(parseOutlineParam('')).toBe(true)
+  })
+
+  it('returns false for outline=0', () => {
+    expect(parseOutlineParam('?url=xxx&outline=0')).toBe(false)
+  })
+
+  it('returns false for outline=false (case-insensitive)', () => {
+    expect(parseOutlineParam('?url=xxx&outline=false')).toBe(false)
+    expect(parseOutlineParam('?url=xxx&outline=FALSE')).toBe(false)
+  })
+
+  it('returns true for empty outline value', () => {
+    expect(parseOutlineParam('?url=xxx&outline=')).toBe(true)
+  })
+
+  it('returns true for other values', () => {
+    expect(parseOutlineParam('?url=xxx&outline=1')).toBe(true)
+    expect(parseOutlineParam('?url=xxx&outline=yes')).toBe(true)
   })
 })
 
@@ -306,6 +334,28 @@ describe('main orchestration', () => {
 
     expect(document.body.classList.contains('show-toolbar')).toBe(true)
     expect(mockedMountToolbar).toHaveBeenCalled()
+  })
+
+  it('skips outline mounting when outline=0 even if document has headings', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=https://example.com/doc.md&outline=0' },
+      writable: true,
+    })
+
+    const mockVditor = createMockVditorInstance()
+    mockedCreateVditor.mockReturnValue(mockVditor)
+    mockedLoadMd.mockResolvedValue({
+      ok: true,
+      md: '# Hello\n## World',
+      url: 'https://example.com/doc.md',
+    })
+    const outlineHandle = { destroy: vi.fn() }
+    mockedMountOutline.mockResolvedValue(outlineHandle)
+
+    await main()
+
+    expect(mockedMountOutline).not.toHaveBeenCalled()
+    expect(mockedMountResizer).not.toHaveBeenCalled()
   })
 
   it('renders HTTP error on 404', async () => {

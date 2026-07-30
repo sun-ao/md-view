@@ -34,6 +34,14 @@ export function parseToolbarParam(search: string): boolean {
   return lower === '1' || lower === 'true'
 }
 
+export function parseOutlineParam(search: string): boolean {
+  const params = new URLSearchParams(search)
+  const value = params.get('outline')
+  if (value === null) return true
+  const lower = value.toLowerCase()
+  return lower !== '0' && lower !== 'false'
+}
+
 function renderError(container: HTMLElement, error: FetchError): void {
   const msg = getErrorMessage(error)
   container.innerHTML = `<div class="error-state">${msg}</div>`
@@ -75,13 +83,15 @@ export async function main(): Promise<void> {
     document.body.classList.add('show-toolbar')
   }
 
-  if (outlineEl) {
+  if (outlineEl && parseOutlineParam(window.location.search)) {
     const outlineHandle = await mountOutline(outlineEl, editorEl)
     if (outlineHandle) {
       toolbarHandle?.setOutlineToggleAvailable()
       const resizerEl = document.getElementById('resizer')
       if (resizerEl) mountResizer(resizerEl, outlineEl)
     }
+  } else if (outlineEl) {
+    outlineEl.classList.add('outline-hidden')
   }
 }
 
