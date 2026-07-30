@@ -3,6 +3,7 @@ import { loadMd, type FetchError } from './load-md'
 import { mountOutline } from './outline'
 import { mountResizer } from './divider'
 import { mountToolbar } from './toolbar'
+import { attachLinkInterceptor } from './link-interceptor'
 import { createVditorInstance, type IVditorInstance } from './vditor-instance'
 
 export function getErrorMessage(error: FetchError): string {
@@ -42,6 +43,11 @@ export function parseOutlineParam(search: string): boolean {
   return lower !== '0' && lower !== 'false'
 }
 
+export function parseInEysyParam(search: string): boolean {
+  const params = new URLSearchParams(search)
+  return params.get('inEysy') === '1'
+}
+
 function renderError(container: HTMLElement, error: FetchError): void {
   const msg = getErrorMessage(error)
   container.innerHTML = `<div class="error-state">${msg}</div>`
@@ -55,6 +61,11 @@ export async function main(): Promise<void> {
   const toolbarEl = document.getElementById('toolbar')
   const editorEl = document.getElementById('editor')
   if (!toolbarEl || !editorEl) return
+
+  // e-ysy 客户端容器：拦截外链点击，交由父窗口唤起系统浏览器
+  if (parseInEysyParam(window.location.search)) {
+    attachLinkInterceptor()
+  }
 
   const url = parseUrlParam(window.location.search)
   if (!url) {

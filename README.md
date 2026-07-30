@@ -19,6 +19,7 @@ https://your-host.com/?url=https://raw.githubusercontent.com/microsoft/vscode/ma
 | `url` | 是 | Markdown 文件地址 |
 | `toolbar` | 否 | `1` 显示顶部工具栏（编辑 / 导出 / 复制 / 原文 / 大纲切换），默认隐藏 |
 | `outline` | 否 | `0` 或 `false` 关闭右侧大纲，默认显示 |
+| `inEysy` | 否 | `1` 表示运行在 e-ysy 客户端容器内，启用外链拦截（见下文），默认关闭 |
 
 > **注意**：由于浏览器安全限制（CORS），只能加载**允许跨域**的在线地址。推荐的 CORS 友好源包括：
 > - `https://raw.githubusercontent.com/...`
@@ -36,6 +37,32 @@ https://your-host.com/?url=https://raw.githubusercontent.com/microsoft/vscode/ma
 - 原文链接跳转
 - 自动生成文章大纲，点击跳转、滚动高亮，可拖拽调整宽度
 - 加载态 / 错误态提示（CORS、HTTP 404、空文件等）
+- 嵌入 e-ysy 客户端容器时，可拦截外链点击交由宿主用系统浏览器打开
+
+## 嵌入 e-ysy 容器
+
+在 URL 上加 `?inEysy=1` 即可启用外链拦截，适用于以 iframe 形式嵌入 e-ysy 客户端的场景：
+
+```
+https://your-host.com/?url=https://example.com/doc.md&inEysy=1
+```
+
+启用后，预览区内的 http/https 链接点击不会被浏览器默认打开，而是通过 `postMessage` 通知父窗口，由宿主唤起系统浏览器。锚点（`#xxx`）、`mailto:`、`tel:` 等非 http(s) 链接照常放行。
+
+父窗口需监听 `message` 事件并处理 `openExternal`：
+
+```js
+window.addEventListener('message', (e) => {
+  // 建议校验 e.origin 是否为可信部署地址
+  let data
+  try { data = JSON.parse(e.data) } catch { return }
+  if (data.event === 'openExternal' && data.url) {
+    // 用系统浏览器打开 data.url
+  }
+})
+```
+
+> 注意：`inEysy=1` 只在容器内有意义。直接在浏览器中带该参数访问，链接点击会因无父窗口响应而看起来"无反应"。
 
 ## 本地开发
 
@@ -78,6 +105,7 @@ src/
 ├── toolbar.ts          # 顶部工具栏（编辑 / 导出 / 复制 / 原文 / 大纲切换）
 ├── outline.ts          # 文章大纲（scroll-spy + 点击跳转）
 ├── divider.ts          # 大纲宽度拖拽分隔条
+├── link-interceptor.ts # e-ysy 容器外链拦截（postMessage 通知父窗口）
 ├── main.ts             # 应用入口编排
 └── style.css           # 布局与 Vditor 模式样式
 ```

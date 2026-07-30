@@ -20,7 +20,7 @@ Tests use Vitest with `globals: true` (no need to import `describe`/`it`/`expect
 
 ## Architecture
 
-The app is a single-page static tool: read `?url=` from the query string, fetch a remote Markdown file, render it with Vditor, and let the user toggle between read-only preview and edit mode. Two optional query params (`?toolbar=1`, `?outline=0`) control whether the toolbar and outline mount; see Data flow below for defaults.
+The app is a single-page static tool: read `?url=` from the query string, fetch a remote Markdown file, render it with Vditor, and let the user toggle between read-only preview and edit mode. Three optional query params (`?toolbar=1`, `?outline=0`, `?inEysy=1`) control toolbar/outline mounting and e-ysy container link interception; see Data flow below for defaults.
 
 ### Data flow
 
@@ -29,10 +29,12 @@ The app is a single-page static tool: read `?url=` from the query string, fetch 
 - `?url=` (required) - md source URL
 - `?toolbar=1` (default **off**) - show the toolbar; `parseToolbarParam` only accepts `1`/`true`
 - `?outline=0` (default **on**) - disable the outline; `parseOutlineParam` treats absence as on, `0`/`false` as off
+- `?inEysy=1` (default **off**) - running inside the e-ysy client container; `parseInEysyParam` accepts only literal `1`. When on, `attachLinkInterceptor()` mounts a capture-phase click listener on `document` that intercepts http/https links, calls `preventDefault`/`stopPropagation`, and `postMessage`s `{ event: 'openExternal', url }` to `window.parent` so the host opens it in the system browser. Anchors (`#xxx`), `mailto:`, `tel:`, `javascript:` are passed through.
 
 ```
 window.location.search
   -> parseUrlParam() -> string | null
+  -> parseInEysyParam()? -> attachLinkInterceptor() (capture-phase, returns detach)
   -> loadMd(url) -> FetchResult ({ ok: true, md } | { ok: false, error: FetchError })
   -> on error: renderError() with getErrorMessage(error)
   -> on ok: vditor.init(editorEl, md)
@@ -71,12 +73,13 @@ Vditor is instantiated **once** in `sv` (split-view) mode. Preview/edit toggling
 - `toolbar.ts` — pure DOM manipulation. `mountToolbar` builds buttons imperatively (mode toggle / export / copy / source link / outline toggle); `extractFilename` is exported separately for unit testing. Accepts an optional `outlineEl` and returns a `ToolbarHandle` whose `setOutlineToggleAvailable()` unhides the outline toggle button (called by `main` after headings are confirmed).
 - `outline.ts` — scroll-spy outline. `findActiveIndex(tops, threshold, atBottom)` is a **pure function** (testable without jsdom layout). `waitForHeadings` polls every 100ms up to 5s (`POLL_TIMEOUT`) because Vditor renders preview HTML asynchronously. Returns `OutlineHandle.destroy()` to detach scroll/wheel/touch listeners.
 - `divider.ts` — pointer-drag resizer for the outline width. `clampWidth` is a pure function. Uses pointer capture + `pointercancel` fallback; dblclick resets to `DEFAULT_WIDTH` (260px, clamped to 160-480). Reads width from `el.style.width` (string), **not** `offsetWidth` — jsdom does no layout so `offsetWidth` is always 0.
-- `main.ts` — the only module that touches `window.location` and ties everything together. Exports pure helpers `parseUrlParam` / `parseToolbarParam` / `parseOutlineParam` / `getErrorMessage` for unit testing. Toolbar is **off by default**; outline is **on by default**.
+- `link-interceptor.ts` — e-ysy container link interception. `attachLinkInterceptor()` adds a capture-phase `click` listener on `document` and returns a `detach()` cleanup. Walks `e.target.closest('a')`; passes through anchors (`getAttribute('href')` starting with `#`, since `a.href` resolves `#x` to an absolute URL that would otherwise match the http regex), `mailto:`, `tel:`, `javascript:`; for http/https it `preventDefault` + `stopPropagation` and `window.parent.postMessage(JSON.stringify({ event: 'openExternal', url }), '*')`. Only mounted when `?inEysy=1`.
+- `main.ts` — the only module that touches `window.location` and ties everything together. Exports pure helpers `parseUrlParam` / `parseToolbarParam` / `parseOutlineParam` / `parseInEysyParam` / `getErrorMessage` for unit testing. Toolbar is **off by default**; outline is **on by default**; link interceptor is **off by default**.
 
 ### Testing patterns
 
 - **Co-located tests**: every `src/*.ts` has a `*.test.ts` next to it.
-- **Module isolation in `main.test.ts`**: mocks **five** modules — `./load-md`, `./vditor-instance`, `./toolbar`, `./outline`, `./divider`. Mocks must be declared before the imports of those modules.
+- **Module isolation in `main.test.ts`**: mocks **six** modules — `./load-md`, `./vditor-instance`, `./toolbar`, `./outline`, `./divider`, `./link-interceptor`. Mocks must be declared before the imports of those modules.
 - **`load-md.test.ts`**: replaces `global.fetch` per test; uses `vi.useFakeTimers()` for the timeout case.
 - **Outline without layout**: jsdom does no layout, so `outline.test.ts` exercises `findActiveIndex(tops, threshold, atBottom)` directly with synthetic numbers rather than driving real scroll metrics.
 - **Divider width assertions**: `divider.test.ts` asserts on `outlineEl.style.width` (the inline string set by `mountResizer`), never on `offsetWidth`/`clientWidth` (both 0 in jsdom).

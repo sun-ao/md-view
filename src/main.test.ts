@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getErrorMessage, parseUrlParam, parseToolbarParam, parseOutlineParam } from './main'
+import { getErrorMessage, parseUrlParam, parseToolbarParam, parseOutlineParam, parseInEysyParam } from './main'
 import type { FetchError } from './load-md'
 
 describe('getErrorMessage', () => {
@@ -119,6 +119,38 @@ describe('parseOutlineParam', () => {
   })
 })
 
+describe('parseInEysyParam', () => {
+  it('returns true only for inEysy=1', () => {
+    expect(parseInEysyParam('?url=xxx&inEysy=1')).toBe(true)
+  })
+
+  it('returns false for inEysy=true (strict: only literal "1")', () => {
+    expect(parseInEysyParam('?url=xxx&inEysy=true')).toBe(false)
+    expect(parseInEysyParam('?url=xxx&inEysy=TRUE')).toBe(false)
+  })
+
+  it('returns false for inEysy=0', () => {
+    expect(parseInEysyParam('?url=xxx&inEysy=0')).toBe(false)
+  })
+
+  it('returns false when inEysy param is absent', () => {
+    expect(parseInEysyParam('?url=xxx')).toBe(false)
+  })
+
+  it('returns false for empty search', () => {
+    expect(parseInEysyParam('')).toBe(false)
+  })
+
+  it('returns false for empty inEysy value', () => {
+    expect(parseInEysyParam('?url=xxx&inEysy=')).toBe(false)
+  })
+
+  it('returns false for other values', () => {
+    expect(parseInEysyParam('?url=xxx&inEysy=yes')).toBe(false)
+    expect(parseInEysyParam('?url=xxx&inEysy=2')).toBe(false)
+  })
+})
+
 import { afterEach, beforeEach, vi } from 'vitest'
 import { main } from './main'
 
@@ -147,18 +179,25 @@ vi.mock('./divider', () => ({
   mountResizer: vi.fn(),
 }))
 
+// Mock link-interceptor module
+vi.mock('./link-interceptor', () => ({
+  attachLinkInterceptor: vi.fn(),
+}))
+
 // Import after mock declarations
 import { loadMd } from './load-md'
 import { createVditorInstance } from './vditor-instance'
 import { mountToolbar } from './toolbar'
 import { mountOutline } from './outline'
 import { mountResizer } from './divider'
+import { attachLinkInterceptor } from './link-interceptor'
 
 const mockedLoadMd = vi.mocked(loadMd)
 const mockedCreateVditor = vi.mocked(createVditorInstance)
 const mockedMountToolbar = vi.mocked(mountToolbar)
 const mockedMountOutline = vi.mocked(mountOutline)
 const mockedMountResizer = vi.mocked(mountResizer)
+const mockedAttachLinkInterceptor = vi.mocked(attachLinkInterceptor)
 
 function createMockToolbarHandle() {
   return { setOutlineToggleAvailable: vi.fn() }
@@ -408,5 +447,45 @@ describe('main orchestration', () => {
 
     const editor = document.getElementById('editor')!
     expect(editor.textContent).toContain('空')
+  })
+
+  it('attaches link interceptor when inEysy=1', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=https://example.com/doc.md&inEysy=1' },
+      writable: true,
+    })
+
+    const mockVditor = createMockVditorInstance()
+    mockedCreateVditor.mockReturnValue(mockVditor)
+    mockedLoadMd.mockResolvedValue({
+      ok: true,
+      md: '# Hello',
+      url: 'https://example.com/doc.md',
+    })
+    mockedMountOutline.mockResolvedValue(null)
+
+    await main()
+
+    expect(mockedAttachLinkInterceptor).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not attach link interceptor when inEysy is absent', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?url=https://example.com/doc.md' },
+      writable: true,
+    })
+
+    const mockVditor = createMockVditorInstance()
+    mockedCreateVditor.mockReturnValue(mockVditor)
+    mockedLoadMd.mockResolvedValue({
+      ok: true,
+      md: '# Hello',
+      url: 'https://example.com/doc.md',
+    })
+    mockedMountOutline.mockResolvedValue(null)
+
+    await main()
+
+    expect(mockedAttachLinkInterceptor).not.toHaveBeenCalled()
   })
 })
