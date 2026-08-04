@@ -30,9 +30,37 @@ const HEADING_SELECTOR =
 const ACTIVE_THRESHOLD = 80
 const POLL_INTERVAL = 100
 const POLL_TIMEOUT = 5000
+const SCROLL_DURATION = 300
 
 function queryHeadings(sourceEl: HTMLElement): HTMLElement[] {
   return Array.from(sourceEl.querySelectorAll<HTMLElement>(HEADING_SELECTOR))
+}
+
+/**
+ * 手动插值滚动到 `target`。某些嵌入式 webview / iframe 环境禁用了原生
+ * `scrollTo({behavior:'smooth'})` 与 `scrollIntoView`,这里用 requestAnimationFrame
+ * + easeInOutCubic 自行驱动 scrollTop,保证滑动效果可观察且不被环境拦截。
+ * 若手动动画中途被用户滚动(scrollTop 偏离预期轨迹),立即中止交给用户控制。
+ */
+function animateScroll(el: HTMLElement, target: number): void {
+  const start = el.scrollTop
+  const distance = target - start
+  if (Math.abs(distance) < 1) return
+  const startTime = performance.now()
+
+  const ease = (t: number): number =>
+    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+
+  const step = (now: number): void => {
+    const elapsed = now - startTime
+    const t = Math.min(1, elapsed / SCROLL_DURATION)
+    const expected = start + distance * ease(t)
+    el.scrollTop = expected
+    // 用户手动滚动会改变 scrollTop,偏离预期轨迹 >2px 即视为中断
+    if (Math.abs(el.scrollTop - expected) > 2 && t < 1) return
+    if (t < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
 }
 
 /**
@@ -74,7 +102,16 @@ export async function mountOutline(
     item.title = text
     item.addEventListener('click', () => {
       clickedIndex = i
-      heading.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+      if (scrollContainer) {
+        const baseTop = scrollContainer.getBoundingClientRect().top
+        const delta = heading.getBoundingClientRect().top - baseTop
+        const target = Math.max(0, scrollContainer.scrollTop + delta)
+        animateScroll(scrollContainer, target)
+      } else {
+        heading.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+
       // Update immediately: when the preview is already at the bottom (or the
       // heading can't scroll further), no 'scroll' event fires, so update()
       // would never run and the highlight would stay on the wrong item.

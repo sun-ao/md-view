@@ -107,22 +107,32 @@ describe('mountOutline', () => {
     expect(item.title).toBe(longText)
   })
 
-  it('clicking an item scrolls the matching heading into view with smooth/start', async () => {
-    const { outline, editor } = setupVditorFixture('<h1>First</h1><h2>Second</h2><h3>Third</h3>')
+  it('clicking an item scrolls the preview container toward the matching heading', async () => {
+    const { outline, editor, preview } = setupVditorFixture('<h1>First</h1><h2>Second</h2><h3>Third</h3>')
     const headings = editor.querySelectorAll('h1, h2, h3')
-    const headingSpies = Array.from(headings).map((h) => {
-      const spy = vi.fn()
-      ;(h as HTMLElement).scrollIntoView = spy
-      return spy
+    // jsdom 不做布局,用 stubRect 让目标 heading 的 top=300,其余 0,preview top=0。
+    // delta = 300 - 0 = 300,target = 0 + 300 = 300。
+    stubRect(headings[0], 0)
+    stubRect(headings[1], 300)
+    stubRect(headings[2], 0)
+    stubRect(preview, 0)
+
+    // animateScroll 用 rAF 驱动;让 rAF 同步执行回调并推进时间,使动画在测试里跑完。
+    // SCROLL_DURATION=300(见 outline.ts),这里用 310 确保超过动画时长,t=1 终止递归。
+    let time = 0
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      time += 310
+      cb(time)
+      return 0
     })
+
     await mountOutline(outline, editor)
 
     const items = outline.querySelectorAll('.outline-item')
     ;(items[1] as HTMLElement).click()
 
-    expect(headingSpies[1]).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
-    expect(headingSpies[0]).not.toHaveBeenCalled()
-    expect(headingSpies[2]).not.toHaveBeenCalled()
+    expect(preview.scrollTop).toBe(300)
+    rafSpy.mockRestore()
   })
 
   it('attaches a passive scroll listener to .vditor-preview', async () => {
