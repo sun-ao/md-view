@@ -10,6 +10,8 @@ export interface IVditorInstance {
   destroy(): void
 }
 
+const PREVIEW_TIMEOUT = 5000
+
 export function createVditorInstance(): IVditorInstance {
   let vditor: Vditor | null = null
   let container: HTMLElement | null = null
@@ -18,7 +20,16 @@ export function createVditorInstance(): IVditorInstance {
     async init(el: HTMLElement, initialMd: string): Promise<void> {
       container = el
       await new Promise<void>((resolve) => {
+        let done = false
+        const finish = (): void => {
+          if (!done) {
+            done = true
+            resolve()
+          }
+        }
+
         vditor = new Vditor(el, {
+          cdn: 'https://public.yitong.com/mirrors/unpkg.com/vditor@3.11.2',
           mode: 'sv',
           value: initialMd,
           height: '100%',
@@ -27,11 +38,13 @@ export function createVditorInstance(): IVditorInstance {
           preview: {
             hljs: { lineNumber: true, style: 'github' },
             markdown: { toc: true },
+            delay: 50,
+            parse: finish,
           },
           cache: { enable: false },
           after: () => {
             el.classList.add('mode-preview')
-            resolve()
+            setTimeout(finish, PREVIEW_TIMEOUT)
           },
         })
       })

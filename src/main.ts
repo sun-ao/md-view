@@ -53,8 +53,13 @@ function renderError(container: HTMLElement, error: FetchError): void {
   container.innerHTML = `<div class="error-state">${msg}</div>`
 }
 
-function renderLoading(container: HTMLElement): void {
-  container.innerHTML = '<div class="loading">加载中…</div>'
+function showLoading(): HTMLElement {
+  const overlay = document.createElement('div')
+  overlay.className = 'loading-overlay'
+  overlay.innerHTML =
+    '<div class="loading-spinner"></div><div class="loading-text">加载中…</div>'
+  document.body.appendChild(overlay)
+  return overlay
 }
 
 export async function main(): Promise<void> {
@@ -73,16 +78,18 @@ export async function main(): Promise<void> {
     return
   }
 
-  renderLoading(editorEl)
+  const loadingOverlay = showLoading()
 
   const result = await loadMd(url)
   if (!result.ok) {
+    loadingOverlay.remove()
     renderError(editorEl, result.error)
     return
   }
 
   const vditor = createVditorInstance()
   await vditor.init(editorEl, result.md)
+  loadingOverlay.remove()
   const outlineEl = document.getElementById('outline')
 
   const showToolbar = parseToolbarParam(window.location.search)
